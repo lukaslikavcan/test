@@ -1,6 +1,6 @@
 # Notion-Claude API
 
-A powerful API integration between Notion and Claude that helps you understand and leverage your notes for writing.
+A powerful integration between Notion and Claude that helps you understand and leverage your notes for writing. Works with **Claude Desktop via MCP** or as a standalone **REST API**.
 
 ## Features
 
@@ -10,58 +10,110 @@ A powerful API integration between Notion and Claude that helps you understand a
 - **Content Analysis**: Analyze your notes for summaries, themes, key points, and entities
 - **Q&A**: Ask questions about your notes and get answers based on your content
 
-## Quick Start
+---
 
-### 1. Prerequisites
+## Option 1: Claude Desktop (MCP) - Recommended
 
-- Python 3.10+
-- Notion Integration Token ([Create one here](https://www.notion.so/my-integrations))
-- Anthropic API Key ([Get one here](https://console.anthropic.com/))
+Use your Notion notes directly in Claude Desktop conversations.
 
-### 2. Installation
+### Setup
+
+1. **Install dependencies**
+   ```bash
+   git clone <repo-url>
+   cd notion-claude-api
+   pip install -r requirements.txt
+   ```
+
+2. **Get your API keys**
+   - Notion: [notion.so/my-integrations](https://www.notion.so/my-integrations)
+   - Anthropic: [console.anthropic.com](https://console.anthropic.com/)
+
+3. **Share Notion pages with your integration**
+   - Open a page in Notion
+   - Click "..." menu > "Connections"
+   - Add your integration
+
+4. **Configure Claude Desktop**
+
+   Edit your Claude Desktop config file:
+   - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+   Add this configuration:
+   ```json
+   {
+     "mcpServers": {
+       "notion-claude": {
+         "command": "python",
+         "args": ["-m", "src.mcp_server"],
+         "cwd": "/path/to/notion-claude-api",
+         "env": {
+           "NOTION_API_KEY": "your_notion_integration_token",
+           "ANTHROPIC_API_KEY": "your_anthropic_api_key"
+         }
+       }
+     }
+   }
+   ```
+
+5. **Restart Claude Desktop**
+
+### Available Tools in Claude
+
+Once configured, you can ask Claude things like:
+
+| Command | What it does |
+|---------|--------------|
+| "Search my Notion for notes about AI" | Finds relevant content using `notion_search` |
+| "Give me an overview of my notes" | Analyzes themes using `notion_context` |
+| "Summarize my research notes" | Uses `notion_analyze` with summary type |
+| "Help me write about X using my notes" | Uses `notion_integrate` to enhance your draft |
+| "What do my notes say about Y?" | Uses `notion_ask` to answer from your content |
+| "List my Notion pages" | Shows all pages with `notion_list_pages` |
+| "Refresh my Notion cache" | Updates content with `notion_refresh` |
+
+### Example Conversation
+
+```
+You: I'm writing a blog post about productivity. Can you find relevant notes
+     from my Notion and help me write an introduction?
+
+Claude: [Uses notion_search to find productivity-related notes]
+        [Uses notion_integrate to help write the introduction]
+
+        Here's a draft introduction based on your notes...
+```
+
+---
+
+## Option 2: REST API
+
+Run as a standalone API server for programmatic access.
+
+### Setup
 
 ```bash
-# Clone the repository
+# Clone and install
 git clone <repo-url>
 cd notion-claude-api
-
-# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
+source venv/bin/activate
 pip install -r requirements.txt
-```
 
-### 3. Configuration
-
-```bash
-# Copy the example environment file
+# Configure
 cp .env.example .env
-
 # Edit .env with your API keys
-NOTION_API_KEY=your_notion_integration_token
-ANTHROPIC_API_KEY=your_anthropic_api_key
-```
 
-### 4. Connect Notion Pages
-
-In Notion, share the pages you want to access with your integration:
-1. Open a page in Notion
-2. Click "..." menu > "Connections"
-3. Add your integration
-
-### 5. Run the API
-
-```bash
+# Run
 python -m src.api
 ```
 
 The API will be available at `http://localhost:8000`
 
-## API Endpoints
+### API Endpoints
 
-### `POST /search`
+#### `POST /search`
 Search and filter your Notion content by relevance.
 
 ```json
@@ -73,7 +125,7 @@ Search and filter your Notion content by relevance.
 }
 ```
 
-### `POST /analyze`
+#### `POST /analyze`
 Analyze your content with different analysis types.
 
 ```json
@@ -86,7 +138,7 @@ Analyze your content with different analysis types.
 
 Analysis types: `summary`, `themes`, `key_points`, `entities`
 
-### `POST /integrate`
+#### `POST /integrate`
 Integrate relevant notes into your writing.
 
 ```json
@@ -104,7 +156,7 @@ Integration styles:
 - `expand`: Elaborate with more content
 - `synthesize`: Combine ideas into new text
 
-### `POST /context`
+#### `POST /context`
 Get a comprehensive overview of your Notion content.
 
 ```json
@@ -114,55 +166,28 @@ Get a comprehensive overview of your Notion content.
 }
 ```
 
-### `POST /ask`
+#### `POST /ask`
 Ask questions about your notes.
 
 ```
 POST /ask?question=What are my main project ideas?&max_context=10
 ```
 
-### `GET /pages`
+#### `GET /pages`
 List all accessible Notion pages.
 
-### `POST /refresh`
+#### `POST /refresh`
 Force refresh the content cache.
 
-## Example Workflow
-
-### 1. Explore Your Content
-```bash
-# Get an overview of all your notes
-curl -X POST http://localhost:8000/context \
-  -H "Content-Type: application/json" \
-  -d '{"max_pages": 50}'
-```
-
-### 2. Find Relevant Notes
-```bash
-# Search for specific topics
-curl -X POST http://localhost:8000/search \
-  -H "Content-Type: application/json" \
-  -d '{"query": "startup ideas", "max_results": 10}'
-```
-
-### 3. Integrate into Writing
-```bash
-# Enhance your draft with relevant notes
-curl -X POST http://localhost:8000/integrate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "draft": "I have been thinking about building a new product...",
-    "query": "product development notes",
-    "integration_style": "enhance"
-  }'
-```
+---
 
 ## Architecture
 
 ```
 src/
 ├── __init__.py          # Package initialization
-├── api.py               # FastAPI application and endpoints
+├── mcp_server.py        # MCP server for Claude Desktop
+├── api.py               # FastAPI REST application
 ├── config.py            # Configuration management
 ├── notion_client.py     # Notion API client
 ├── claude_client.py     # Claude API client
@@ -177,9 +202,8 @@ src/
 | `ANTHROPIC_API_KEY` | Anthropic API key | Required |
 | `CLAUDE_MODEL` | Claude model to use | `claude-opus-4-5-20251101` |
 | `MAX_TOKENS` | Max tokens for Claude responses | `4096` |
-| `RELEVANCE_THRESHOLD` | Minimum relevance score | `0.5` |
 | `CHUNK_SIZE` | Size of content chunks | `1000` |
-| `API_PORT` | API server port | `8000` |
+| `API_PORT` | API server port (REST only) | `8000` |
 
 ## License
 

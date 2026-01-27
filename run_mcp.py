@@ -2,15 +2,27 @@
 """Runner script for the MCP server."""
 
 import sys
-from pathlib import Path
+print("[run_mcp] Starting...", file=sys.stderr)
 
-# Add the project root to Python path
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
+try:
+    from pathlib import Path
 
-# Now run the server
-from src.mcp_server import main
-import asyncio
+    # Add the project root to Python path
+    project_root = Path(__file__).parent
+    sys.path.insert(0, str(project_root))
+    print(f"[run_mcp] Added {project_root} to path", file=sys.stderr)
 
-if __name__ == "__main__":
+    # Now run the server
+    print("[run_mcp] Importing mcp_server...", file=sys.stderr)
+    from src.mcp_server import main
+    print("[run_mcp] Import successful", file=sys.stderr)
+
+    import asyncio
+    print("[run_mcp] Running main...", file=sys.stderr)
     asyncio.run(main())
+
+except Exception as e:
+    print(f"[run_mcp] ERROR: {e}", file=sys.stderr)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+    sys.exit(1)

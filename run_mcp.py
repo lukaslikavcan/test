@@ -2,27 +2,45 @@
 """Runner script for the MCP server."""
 
 import sys
-print("[run_mcp] Starting...", file=sys.stderr)
+
+def log(msg):
+    print(f"[run_mcp] {msg}", file=sys.stderr, flush=True)
+
+log("Script starting...")
 
 try:
+    log("Importing pathlib...")
     from pathlib import Path
 
     # Add the project root to Python path
     project_root = Path(__file__).parent
     sys.path.insert(0, str(project_root))
-    print(f"[run_mcp] Added {project_root} to path", file=sys.stderr)
+    log(f"Added {project_root} to path")
 
-    # Now run the server
-    print("[run_mcp] Importing mcp_server...", file=sys.stderr)
-    from src.mcp_server import main
-    print("[run_mcp] Import successful", file=sys.stderr)
-
+    log("Importing asyncio...")
     import asyncio
-    print("[run_mcp] Running main...", file=sys.stderr)
+
+    log("Importing mcp...")
+    from mcp.server import Server
+    from mcp.server.stdio import stdio_server
+    from mcp.types import TextContent, Tool
+    log("MCP imports successful")
+
+    log("Importing src modules...")
+    from src.claude_client import ClaudeClient
+    from src.content_filter import ContentFilter, FilterCriteria
+    from src.notion_client import NotionClient, NotionPage
+    log("All imports successful")
+
+    log("Importing main from mcp_server...")
+    from src.mcp_server import main
+    log("Import successful, running main...")
+
     asyncio.run(main())
 
 except Exception as e:
-    print(f"[run_mcp] ERROR: {e}", file=sys.stderr)
+    log(f"ERROR: {type(e).__name__}: {e}")
     import traceback
     traceback.print_exc(file=sys.stderr)
+    sys.stderr.flush()
     sys.exit(1)

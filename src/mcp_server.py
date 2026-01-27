@@ -6,15 +6,27 @@ that can be used directly in Claude Desktop/Chat.
 
 import asyncio
 import os
+import sys
 from datetime import datetime, timezone
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
-from .claude_client import ClaudeClient
-from .content_filter import ContentChunk, ContentFilter, FilterCriteria
-from .notion_client import NotionClient, NotionPage
+# Print to stderr for debugging (shows in Claude Desktop logs)
+def log(msg: str):
+    print(f"[notion-claude] {msg}", file=sys.stderr)
+
+log("Loading MCP server module...")
+
+try:
+    from .claude_client import ClaudeClient
+    from .content_filter import ContentChunk, ContentFilter, FilterCriteria
+    from .notion_client import NotionClient, NotionPage
+    log("Imports successful")
+except Exception as e:
+    log(f"Import error: {e}")
+    raise
 
 
 # Initialize server
@@ -40,6 +52,8 @@ def init_clients():
     """Initialize API clients."""
     global notion_client, claude_client, content_filter
 
+    log("Initializing clients...")
+
     if notion_client is None:
         notion_client = NotionClient(
             api_key=get_env_or_raise("NOTION_API_KEY"),
@@ -53,6 +67,8 @@ def init_clients():
         content_filter = ContentFilter(
             chunk_size=int(os.getenv("CHUNK_SIZE", "1000"))
         )
+
+    log("Clients initialized")
 
 
 async def get_pages(force_refresh: bool = False, max_pages: int = 100) -> list[NotionPage]:
@@ -80,6 +96,7 @@ async def get_pages(force_refresh: bool = False, max_pages: int = 100) -> list[N
 @server.list_tools()
 async def list_tools() -> list[Tool]:
     """List available tools."""
+    log("list_tools called")
     return [
         Tool(
             name="notion_search",
@@ -208,24 +225,29 @@ async def list_tools() -> list[Tool]:
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     """Handle tool calls."""
-    init_clients()
+    log(f"call_tool: {name}")
+    try:
+        init_clients()
 
-    if name == "notion_search":
-        return await handle_search(arguments)
-    elif name == "notion_context":
-        return await handle_context(arguments)
-    elif name == "notion_analyze":
-        return await handle_analyze(arguments)
-    elif name == "notion_integrate":
-        return await handle_integrate(arguments)
-    elif name == "notion_ask":
-        return await handle_ask(arguments)
-    elif name == "notion_list_pages":
-        return await handle_list_pages(arguments)
-    elif name == "notion_refresh":
-        return await handle_refresh(arguments)
-    else:
-        return [TextContent(type="text", text=f"Unknown tool: {name}")]
+        if name == "notion_search":
+            return await handle_search(arguments)
+        elif name == "notion_context":
+            return await handle_context(arguments)
+        elif name == "notion_analyze":
+            return await handle_analyze(arguments)
+        elif name == "notion_integrate":
+            return await handle_integrate(arguments)
+        elif name == "notion_ask":
+            return await handle_ask(arguments)
+        elif name == "notion_list_pages":
+            return await handle_list_pages(arguments)
+        elif name == "notion_refresh":
+            return await handle_refresh(arguments)
+        else:
+            return [TextContent(type="text", text=f"Unknown tool: {name}")]
+    except Exception as e:
+        log(f"Error in call_tool: {e}")
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
 
 
 async def handle_search(args: dict) -> list[TextContent]:
@@ -436,8 +458,14 @@ async def handle_refresh(args: dict) -> list[TextContent]:
 
 async def main():
     """Run the MCP server."""
-    async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream, server.create_initialization_options())
+    log("Starting MCP server...")
+    try:
+        async with stdio_server() as (read_stream, write_stream):
+            log("stdio_server connected")
+            await server.run(read_stream, write_stream, server.create_initialization_options())
+    except Exception as e:
+        log(f"Server error: {e}")
+        raise
 
 
 if __name__ == "__main__":

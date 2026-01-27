@@ -6,4 +6,4 @@ pydantic>=2.5.0
 python-dotenv>=1.0.0
 
 # MCP Server
-mcp>=1.0.0
+mcp
